@@ -66,6 +66,9 @@ export interface Assignment {
   status: "assigned" | "active" | "submitted";
 }
 
+export type AttemptStatus = "in_progress" | "submitted" | "auto_submitted";
+export type SubmissionStatus = AttemptStatus | "graded";
+
 export interface AttemptAnswer {
   value: string[];
   markedForReview: boolean;
@@ -78,7 +81,7 @@ export interface StoredAttempt {
   answers: Record<string, AttemptAnswer>;
   warningCount: number;
   lastWarningCode: string | null;
-  status: "in_progress" | "submitted" | "auto_submitted";
+  status: AttemptStatus;
   startedAtMs: number;
   updatedAtMs: number;
   finalizedAtMs?: number;
@@ -88,4 +91,32 @@ export interface FacultyImportPreview {
   questions: ExamQuestion[];
   skippedRows: number;
   sourceName: string;
+}
+
+export interface SubmissionScore {
+  objective: number;
+  manual: number;
+  total: number;
+  published: boolean;
+}
+
+export interface SubmissionReview {
+  attemptId: string;
+  examId: string;
+  uid: string;
+  studentName: string;
+  studentEmail: string;
+  status: SubmissionStatus;
+  warningCount: number;
+  lastWarningCode: string | null;
+  answeredCount: number;
+  markedForReviewCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  objectiveScore: number;
+  possibleScore: number;
+  startedAt: string;
+  lastSavedAt: string;
+  finalizedAt?: string;
+  score: SubmissionScore;
 }

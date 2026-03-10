@@ -175,6 +175,7 @@
       "manual": 0,
       "total": 0,
       "published": false
-    }
+    },
+    "reviewedAt": "timestamp"
   }
 }

@@ -1,5 +1,5 @@
-import type { Assignment, PublishedExam } from "@/types/exam";
-import { createAssignmentFromExam, createBundleHash } from "@/lib/examModel";
+import type { Assignment, PublishedExam, StoredAttempt, SubmissionReview } from "@/types/exam";
+import { buildSubmissionReview, createAssignmentFromExam, createAttemptFromExam, createBundleHash } from "@/lib/examModel";
 
 function buildSchedule() {
   const now = Date.now();
@@ -135,4 +135,110 @@ export async function createMockExam() {
 
 export function createMockAssignment(exam: PublishedExam): Assignment {
   return createAssignmentFromExam(exam);
+}
+
+function withAnswer(
+  attempt: StoredAttempt,
+  questionId: string,
+  value: string[],
+  markedForReview = false
+) {
+  attempt.answers[questionId] = {
+    ...attempt.answers[questionId],
+    value,
+    markedForReview,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+export function createMockSubmissionReviews(exam: PublishedExam): SubmissionReview[] {
+  const now = Date.now();
+
+  const topAttempt = createAttemptFromExam(exam, "student001");
+  withAnswer(topAttempt, "q-1", ["B"]);
+  withAnswer(topAttempt, "q-2", ["C"]);
+  withAnswer(topAttempt, "q-3", ["B"]);
+  withAnswer(topAttempt, "q-4", ["C"]);
+  withAnswer(topAttempt, "q-5", ["54"]);
+  withAnswer(topAttempt, "q-6", ["B"], true);
+  topAttempt.status = "submitted";
+  topAttempt.warningCount = 1;
+  topAttempt.startedAtMs = now - 58 * 60 * 1000;
+  topAttempt.updatedAtMs = now - 3 * 60 * 1000;
+  topAttempt.finalizedAtMs = now - 2 * 60 * 1000;
+
+  const warningAttempt = createAttemptFromExam(exam, "student002");
+  withAnswer(warningAttempt, "q-1", ["A"]);
+  withAnswer(warningAttempt, "q-2", ["C"]);
+  withAnswer(warningAttempt, "q-3", ["D"]);
+  withAnswer(warningAttempt, "q-4", ["C"], true);
+  withAnswer(warningAttempt, "q-5", ["45"]);
+  warningAttempt.status = "auto_submitted";
+  warningAttempt.warningCount = 3;
+  warningAttempt.lastWarningCode = "visibility_hidden";
+  warningAttempt.startedAtMs = now - 61 * 60 * 1000;
+  warningAttempt.updatedAtMs = now - 1 * 60 * 1000;
+  warningAttempt.finalizedAtMs = now - 1 * 60 * 1000;
+
+  const inProgressAttempt = createAttemptFromExam(exam, "student003");
+  withAnswer(inProgressAttempt, "q-1", ["B"]);
+  withAnswer(inProgressAttempt, "q-2", ["A"], true);
+  withAnswer(inProgressAttempt, "q-4", ["C"]);
+  inProgressAttempt.status = "in_progress";
+  inProgressAttempt.warningCount = 2;
+  inProgressAttempt.startedAtMs = now - 32 * 60 * 1000;
+  inProgressAttempt.updatedAtMs = now - 45 * 1000;
+
+  return [
+    buildSubmissionReview({
+      exam,
+      attempt: topAttempt,
+      uid: "student001",
+      studentName: "Student One",
+      studentEmail: "student001@college.edu",
+      status: "graded",
+      startedAt: new Date(topAttempt.startedAtMs).toISOString(),
+      lastSavedAt: new Date(topAttempt.updatedAtMs).toISOString(),
+      finalizedAt: new Date(topAttempt.finalizedAtMs || topAttempt.updatedAtMs).toISOString(),
+      score: {
+        objective: 6,
+        manual: 0,
+        total: 6,
+        published: true
+      }
+    }),
+    buildSubmissionReview({
+      exam,
+      attempt: warningAttempt,
+      uid: "student002",
+      studentName: "Student Two",
+      studentEmail: "student002@college.edu",
+      status: "auto_submitted",
+      startedAt: new Date(warningAttempt.startedAtMs).toISOString(),
+      lastSavedAt: new Date(warningAttempt.updatedAtMs).toISOString(),
+      finalizedAt: new Date(warningAttempt.finalizedAtMs || warningAttempt.updatedAtMs).toISOString(),
+      score: {
+        objective: 2,
+        manual: 0,
+        total: 2,
+        published: false
+      }
+    }),
+    buildSubmissionReview({
+      exam,
+      attempt: inProgressAttempt,
+      uid: "student003",
+      studentName: "Student Three",
+      studentEmail: "student003@college.edu",
+      status: "in_progress",
+      startedAt: new Date(inProgressAttempt.startedAtMs).toISOString(),
+      lastSavedAt: new Date(inProgressAttempt.updatedAtMs).toISOString(),
+      score: {
+        objective: 2,
+        manual: 0,
+        total: 2,
+        published: false
+      }
+    })
+  ];
 }

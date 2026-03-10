@@ -9,6 +9,7 @@ The repo now contains:
 - a React + TypeScript + Vite PWA application
 - a mobile-focused student exam runner with `useExamLockdown`
 - a faculty publishing console with CSV and Excel intake
+- a faculty submission review queue with objective scoring and result publication
 - Firestore and Realtime Database rules templates
 - architecture and schema docs for the Firebase deployment path
 
@@ -91,6 +92,7 @@ The scripts create or update Firebase Auth users, apply custom role claims, and 
 
 - `src/App.tsx`: app shell and route-level lazy loading
 - `src/pages/FacultyPage.tsx`: faculty publishing workflow
+- `src/lib/portalGateway.ts`: Firebase auth, publishing, submissions, and review data loading
 - `src/pages/StudentDashboardPage.tsx`: student prefetch and launch flow
 - `src/pages/ExamSessionPage.tsx`: exam runner, palette, bottom bar, and submission handling
 - `src/hooks/useExamLockdown.ts`: timer, warnings, shortcut blocking, checkpoints, and auto-submit

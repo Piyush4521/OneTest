@@ -1,10 +1,17 @@
-import { useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { MetricCard } from "@/components/MetricCard";
 import { StatusPill } from "@/components/StatusPill";
 import { createBundleHash, formatExamWindow, toLocalDateTimeValue } from "@/lib/examModel";
 import { importQuestionsFromFile } from "@/lib/importQuestions";
-import type { FacultyImportPreview, PortalUser, PublishedExam } from "@/types/exam";
+import { loadSubmissionReviews, publishObjectiveResults } from "@/lib/portalGateway";
+import { createMockSubmissionReviews } from "@/data/mockData";
+import type {
+  FacultyImportPreview,
+  PortalUser,
+  PublishedExam,
+  SubmissionReview
+} from "@/types/exam";
 
 interface FacultyPageProps {
   appMode: "demo" | "firebase";
@@ -24,6 +31,10 @@ export function FacultyPage({
   const [importPreview, setImportPreview] = useState<FacultyImportPreview | null>(null);
   const [statusMessage, setStatusMessage] = useState("Waiting for a new question file.");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isRefreshingReviews, setIsRefreshingReviews] = useState(false);
+  const [isPublishingResults, setIsPublishingResults] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState("Loading review workspace.");
+  const [submissionReviews, setSubmissionReviews] = useState<SubmissionReview[]>([]);
   const [targetUids, setTargetUids] = useState("");
   const [title, setTitle] = useState(publishedExam.settings.title);
   const [subject, setSubject] = useState(publishedExam.settings.subject);
@@ -38,6 +49,68 @@ export function FacultyPage({
   const [instructionsText, setInstructionsText] = useState(
     publishedExam.settings.instructions.join("\n")
   );
+
+  useEffect(() => {
+    setTitle(publishedExam.settings.title);
+    setSubject(publishedExam.settings.subject);
+    setCode(publishedExam.settings.code);
+    setDurationMinutes(String(publishedExam.settings.durationMinutes));
+    setMaxWarnings(String(publishedExam.settings.maxWarnings));
+    setStartAt(toLocalDateTimeValue(new Date(publishedExam.settings.startAt)));
+    setHardEndAt(toLocalDateTimeValue(new Date(publishedExam.settings.hardEndAt)));
+    setGraceSubmitAt(toLocalDateTimeValue(new Date(publishedExam.settings.graceSubmitAt)));
+    setInstructionsText(publishedExam.settings.instructions.join("\n"));
+  }, [publishedExam]);
+
+  const finalizedReviews = useMemo(
+    () => submissionReviews.filter((review) => Boolean(review.finalizedAt)),
+    [submissionReviews]
+  );
+  const publishedResultsCount = useMemo(
+    () => submissionReviews.filter((review) => review.score.published).length,
+    [submissionReviews]
+  );
+  const averageScore = useMemo(() => {
+    if (finalizedReviews.length === 0) {
+      return "0.0";
+    }
+
+    const total = finalizedReviews.reduce((sum, review) => sum + review.score.total, 0);
+    return (total / finalizedReviews.length).toFixed(1);
+  }, [finalizedReviews]);
+
+  const possibleScore = useMemo(
+    () => publishedExam.questions.reduce((sum, question) => sum + question.marks, 0),
+    [publishedExam.questions]
+  );
+
+  const hydrateReviews = useCallback(async () => {
+    setIsRefreshingReviews(true);
+
+    try {
+      const reviews =
+        appMode === "firebase"
+          ? await loadSubmissionReviews(publishedExam)
+          : createMockSubmissionReviews(publishedExam);
+
+      setSubmissionReviews(reviews);
+      setReviewMessage(
+        reviews.length > 0
+          ? `Loaded ${reviews.length} submission record(s) for ${publishedExam.settings.title}.`
+          : "No submissions are available yet."
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not load the faculty review workspace.";
+      setReviewMessage(message);
+    } finally {
+      setIsRefreshingReviews(false);
+    }
+  }, [appMode, publishedExam]);
+
+  useEffect(() => {
+    void hydrateReviews();
+  }, [hydrateReviews]);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -94,6 +167,71 @@ export function FacultyPage({
     } finally {
       setIsPublishing(false);
     }
+  }
+
+  async function handlePublishResults() {
+    setIsPublishingResults(true);
+
+    try {
+      if (appMode === "firebase") {
+        const result = await publishObjectiveResults(publishedExam);
+        setReviewMessage(`Published ${result.publishedCount} finalized result(s) to Firestore.`);
+        await hydrateReviews();
+        return;
+      }
+
+      const nextReviews: SubmissionReview[] = submissionReviews.map((review): SubmissionReview => {
+        if (!review.finalizedAt) {
+          return review;
+        }
+
+        const objective = review.objectiveScore;
+        const manual = review.score.manual;
+
+        return {
+          ...review,
+          status: "graded",
+          score: {
+            objective,
+            manual,
+            total: Number((objective + manual).toFixed(2)),
+            published: true
+          }
+        };
+      });
+
+      setSubmissionReviews(nextReviews);
+      setReviewMessage(
+        `Published ${nextReviews.filter((review) => review.score.published).length} demo result(s).`
+      );
+    } finally {
+      setIsPublishingResults(false);
+    }
+  }
+
+  function formatReviewTime(value?: string) {
+    if (!value) {
+      return "Not finalized";
+    }
+
+    return new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(value));
+  }
+
+  function statusTone(review: SubmissionReview) {
+    if (review.status === "graded") {
+      return "success";
+    }
+
+    if (review.status === "submitted" || review.status === "auto_submitted") {
+      return "accent";
+    }
+
+    return "warning";
   }
 
   return (
@@ -259,6 +397,117 @@ export function FacultyPage({
 
           {externalStatusMessage ? <p className="helper-copy">{externalStatusMessage}</p> : null}
         </article>
+      </section>
+
+      <section className="surface-card">
+        <div className="review-toolbar">
+          <div>
+            <p className="panel-label">Submission Review</p>
+            <h2>Grade finalized attempts and publish results.</h2>
+          </div>
+          <div className="actions-row">
+            <button
+              className="button button-secondary"
+              disabled={isRefreshingReviews}
+              onClick={() => void hydrateReviews()}
+            >
+              {isRefreshingReviews ? "Refreshing..." : "Refresh Submissions"}
+            </button>
+            <button
+              className="button button-primary"
+              disabled={isPublishingResults || finalizedReviews.length === 0}
+              onClick={() => void handlePublishResults()}
+            >
+              {isPublishingResults ? "Publishing..." : "Publish Results"}
+            </button>
+          </div>
+        </div>
+
+        <section className="metric-grid review-summary-grid">
+          <MetricCard
+            eyebrow="Finalized Attempts"
+            value={String(finalizedReviews.length)}
+            detail="Only finalized attempts are included when publishing scores."
+          />
+          <MetricCard
+            eyebrow="Published Results"
+            value={String(publishedResultsCount)}
+            detail="Result cards flip to published once faculty confirms scoring."
+          />
+          <MetricCard
+            eyebrow="Average Score"
+            value={`${averageScore}/${possibleScore}`}
+            detail="Objective total across finalized attempts."
+          />
+        </section>
+
+        <p className="helper-copy">{reviewMessage}</p>
+
+        {submissionReviews.length === 0 ? (
+          <article className="review-empty">
+            <StatusPill tone="warning" label="No submissions yet" />
+            <p className="helper-copy">
+              Students need to create or finalize attempts before the faculty review queue can be scored.
+            </p>
+          </article>
+        ) : (
+          <div className="review-grid">
+            {submissionReviews.map((review) => (
+              <article className="review-card" key={review.attemptId}>
+                <div className="review-card-header">
+                  <div>
+                    <p className="panel-label">Candidate</p>
+                    <h3>{review.studentName}</h3>
+                    <p className="helper-copy">
+                      {review.studentEmail || review.uid}
+                    </p>
+                  </div>
+                  <div className="status-stack">
+                    <StatusPill
+                      tone={statusTone(review)}
+                      label={review.status.replace("_", " ")}
+                    />
+                    <StatusPill
+                      tone={review.score.published ? "success" : "neutral"}
+                      label={review.score.published ? "Result published" : "Draft score"}
+                    />
+                  </div>
+                </div>
+
+                <div className="review-detail-grid">
+                  <div className="review-detail">
+                    <span>Score</span>
+                    <strong className="review-score">
+                      {review.score.total}/{review.possibleScore}
+                    </strong>
+                  </div>
+                  <div className="review-detail">
+                    <span>Correct</span>
+                    <strong>{review.correctCount}</strong>
+                  </div>
+                  <div className="review-detail">
+                    <span>Answered</span>
+                    <strong>{review.answeredCount}</strong>
+                  </div>
+                  <div className="review-detail">
+                    <span>Warnings</span>
+                    <strong>{review.warningCount}</strong>
+                  </div>
+                </div>
+
+                <div className="review-meta">
+                  <small>Started {formatReviewTime(review.startedAt)}</small>
+                  <small>Last sync {formatReviewTime(review.lastSavedAt)}</small>
+                  <small>Finalized {formatReviewTime(review.finalizedAt)}</small>
+                  <small>
+                    Review flags {review.markedForReviewCount}
+                    {review.lastWarningCode ? ` - ${review.lastWarningCode}` : ""}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,4 +1,4 @@
-import { createAssignmentFromExam, createStudentSafeExam } from "@/lib/examModel";
+import { buildSubmissionReview, createAssignmentFromExam, createStudentSafeExam } from "@/lib/examModel";
 import { getFirebaseServices } from "@/lib/firebase";
 import { nowMs } from "@/lib/time";
 import type {
@@ -6,6 +6,8 @@ import type {
   PortalUser,
   PublishedExam,
   StoredAttempt,
+  SubmissionReview,
+  SubmissionScore,
   UserRole
 } from "@/types/exam";
 
@@ -64,6 +66,27 @@ function normalizeQuestions(rawQuestions: unknown[]) {
       negativeMarks: Number(entry.negativeMarks || 0)
     };
   });
+}
+
+function mapSubmissionScore(value: unknown): SubmissionScore {
+  const entry = (value as Record<string, unknown>) || {};
+
+  return {
+    objective: typeof entry.objective === "number" ? entry.objective : 0,
+    manual: typeof entry.manual === "number" ? entry.manual : 0,
+    total: typeof entry.total === "number" ? entry.total : 0,
+    published: Boolean(entry.published)
+  };
+}
+
+function chunkValues<T>(values: T[], chunkSize: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < values.length; index += chunkSize) {
+    chunks.push(values.slice(index, index + chunkSize));
+  }
+
+  return chunks;
 }
 
 function mapAssignment(examId: string, data: Record<string, unknown>): Assignment {
@@ -178,7 +201,10 @@ export async function loadFacultyWorkspace(uid: string) {
 
   const draftSnapshot = draftSnapshots.docs[0];
   const questionSnapshots = await getDocs(
-    collection(services.firestore, "examDrafts", draftSnapshot.id, "questions")
+    query(
+      collection(services.firestore, "examDrafts", draftSnapshot.id, "questions"),
+      orderBy("order", "asc")
+    )
   );
 
   const draftData = draftSnapshot.data() as Record<string, unknown>;
@@ -485,6 +511,149 @@ export async function loadRemoteAttempt(examId: string, uid: string) {
   }
 
   return mapStoredAttempt(submissionSnapshot.data() as Record<string, unknown>);
+}
+
+async function loadUserDirectory(uids: string[]) {
+  const services = await getFirebaseServices();
+  if (!services || uids.length === 0) {
+    return new Map<string, { name: string; email: string }>();
+  }
+
+  const { collection, documentId, getDocs, query, where } = await import("firebase/firestore");
+  const directory = new Map<string, { name: string; email: string }>();
+
+  for (const uidChunk of chunkValues(Array.from(new Set(uids)), 30)) {
+    const userSnapshots = await getDocs(
+      query(collection(services.firestore, "users"), where(documentId(), "in", uidChunk))
+    );
+
+    userSnapshots.docs.forEach((userSnapshot) => {
+      const data = userSnapshot.data() as Record<string, unknown>;
+      directory.set(userSnapshot.id, {
+        name: String(data.name || userSnapshot.id),
+        email: String(data.email || "")
+      });
+    });
+  }
+
+  return directory;
+}
+
+export async function loadSubmissionReviews(exam: PublishedExam) {
+  const services = await getFirebaseServices();
+  if (!services) {
+    return [] satisfies SubmissionReview[];
+  }
+
+  const { collection, getDocs, limit, orderBy, query, where } = await import("firebase/firestore");
+  const submissionSnapshots = await getDocs(
+    query(
+      collection(services.firestore, "submissions"),
+      where("examId", "==", exam.id),
+      orderBy("lastSavedAt", "desc"),
+      limit(250)
+    )
+  );
+
+  if (submissionSnapshots.empty) {
+    return [] satisfies SubmissionReview[];
+  }
+
+  const userDirectory = await loadUserDirectory(
+    submissionSnapshots.docs.map((submissionSnapshot) => {
+      const data = submissionSnapshot.data() as Record<string, unknown>;
+      return String(data.uid || "");
+    })
+  );
+
+  return submissionSnapshots.docs.map((submissionSnapshot) => {
+    const data = submissionSnapshot.data() as Record<string, unknown>;
+    const uid = String(data.uid || "");
+    const directoryEntry = userDirectory.get(uid);
+
+    return buildSubmissionReview({
+      exam,
+      attempt: mapStoredAttempt(data),
+      uid,
+      studentName: directoryEntry?.name || uid,
+      studentEmail: directoryEntry?.email || "",
+      status: String(data.status || "in_progress") as SubmissionReview["status"],
+      startedAt: toIsoString(data.startedAt),
+      lastSavedAt: toIsoString(data.lastSavedAt),
+      finalizedAt: data.finalizedAt ? toIsoString(data.finalizedAt) : undefined,
+      score: mapSubmissionScore(data.score)
+    });
+  });
+}
+
+export async function publishObjectiveResults(exam: PublishedExam) {
+  const services = await getFirebaseServices();
+  if (!services) {
+    return { publishedCount: 0 };
+  }
+
+  const { collection, getDocs, limit, orderBy, query, serverTimestamp, where, writeBatch } =
+    await import("firebase/firestore");
+  const submissionSnapshots = await getDocs(
+    query(
+      collection(services.firestore, "submissions"),
+      where("examId", "==", exam.id),
+      orderBy("lastSavedAt", "desc"),
+      limit(250)
+    )
+  );
+
+  const eligibleSnapshots = submissionSnapshots.docs.filter((submissionSnapshot) => {
+    const data = submissionSnapshot.data() as Record<string, unknown>;
+    const status = String(data.status || "in_progress");
+    return status === "submitted" || status === "auto_submitted" || status === "graded";
+  });
+
+  for (const snapshotChunk of chunkValues(eligibleSnapshots, 400)) {
+    const batch = writeBatch(services.firestore);
+
+    snapshotChunk.forEach((submissionSnapshot) => {
+      const data = submissionSnapshot.data() as Record<string, unknown>;
+      const attempt = mapStoredAttempt(data);
+      const currentScore = mapSubmissionScore(data.score);
+      const review = buildSubmissionReview({
+        exam,
+        attempt,
+        uid: String(data.uid || ""),
+        studentName: "",
+        studentEmail: "",
+        status: "graded",
+        startedAt: toIsoString(data.startedAt),
+        lastSavedAt: toIsoString(data.lastSavedAt),
+        finalizedAt: data.finalizedAt ? toIsoString(data.finalizedAt) : undefined,
+        score: {
+          ...currentScore,
+          published: true
+        }
+      });
+
+      batch.set(
+        submissionSnapshot.ref,
+        {
+          status: "graded",
+          score: {
+            objective: review.objectiveScore,
+            manual: currentScore.manual,
+            total: Number((review.objectiveScore + currentScore.manual).toFixed(2)),
+            published: true
+          },
+          reviewedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+    });
+
+    await batch.commit();
+  }
+
+  return {
+    publishedCount: eligibleSnapshots.length
+  };
 }
 
 export async function createRemoteAttempt(uid: string, exam: PublishedExam, attempt: StoredAttempt) {
