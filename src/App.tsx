@@ -32,6 +32,11 @@ const ExamSessionPage = lazy(() =>
     default: module.ExamSessionPage
   }))
 );
+const ExamLaunchPage = lazy(() =>
+  import("@/pages/ExamLaunchPage").then((module) => ({
+    default: module.ExamLaunchPage
+  }))
+);
 const AuthPage = lazy(() =>
   import("@/pages/AuthPage").then((module) => ({ default: module.AuthPage }))
 );
@@ -332,6 +337,17 @@ export default function App() {
           />
           <Route
             path="/student/exam/:examId"
+            element={
+              <ExamLaunchPage
+                assignment={assignment}
+                currentUid={currentUser?.uid}
+                currentUser={currentUser}
+                exam={publishedExam}
+              />
+            }
+          />
+          <Route
+            path="/student/exam/:examId/live"
             element={
               <ExamSessionPage
                 appMode={firebaseConfigured ? "firebase" : "demo"}

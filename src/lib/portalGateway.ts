@@ -659,10 +659,10 @@ export async function publishObjectiveResults(exam: PublishedExam) {
 export async function createRemoteAttempt(uid: string, exam: PublishedExam, attempt: StoredAttempt) {
   const services = await getFirebaseServices();
   if (!services) {
-    return;
+    return null;
   }
 
-  const { doc, serverTimestamp, setDoc } = await import("firebase/firestore");
+  const { doc, getDoc, serverTimestamp, setDoc } = await import("firebase/firestore");
   const submissionRef = doc(services.firestore, "submissions", `${exam.id}_${uid}`);
   await setDoc(submissionRef, {
     ...buildSubmissionPayload(uid, exam, attempt),
@@ -671,6 +671,13 @@ export async function createRemoteAttempt(uid: string, exam: PublishedExam, atte
     lastSavedAt: serverTimestamp(),
     finalizedAt: null
   });
+
+  const submissionSnapshot = await getDoc(submissionRef);
+  if (!submissionSnapshot.exists()) {
+    return null;
+  }
+
+  return mapStoredAttempt(submissionSnapshot.data() as Record<string, unknown>);
 }
 
 export async function syncRemoteAttempt(uid: string, exam: PublishedExam, attempt: StoredAttempt) {

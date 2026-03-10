@@ -236,7 +236,8 @@ a {
 .hero-grid,
 .page-grid,
 .exam-grid,
-.metric-grid {
+.metric-grid,
+.launch-grid {
   display: grid;
   gap: 18px;
 }
@@ -246,7 +247,8 @@ a {
 }
 
 .page-grid,
-.exam-grid {
+.exam-grid,
+.launch-grid {
   grid-template-columns: 1.3fr 0.9fr;
 }
 
@@ -496,6 +498,20 @@ a {
   display: grid;
   gap: 12px;
   margin-top: 18px;
+}
+
+.launch-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(16, 32, 51, 0.06);
+}
+
+.launch-check input {
+  margin-top: 3px;
 }
 
 .review-grid {
@@ -861,6 +877,7 @@ a {
   .exam-grid,
   .metric-grid,
   .form-grid,
+  .launch-grid,
   .review-detail-grid {
     grid-template-columns: 1fr;
   }

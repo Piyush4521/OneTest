@@ -14,6 +14,7 @@ export type WarningCode =
   | "cut_attempt"
   | "context_menu"
   | "print_shortcut"
+  | "inspect_shortcut"
   | "fullscreen_exit"
   | "manual";
 
@@ -248,10 +249,14 @@ export function useExamLockdown(options: UseExamLockdownOptions): UseExamLockdow
       const lowered = event.key.toLowerCase();
       const modifierPressed = event.ctrlKey || event.metaKey;
       const blockedCombo = modifierPressed && ["a", "c", "p", "s", "v", "x"].includes(lowered);
+      const blockedInspectCombo =
+        event.key === "F12" ||
+        (modifierPressed && lowered === "u") ||
+        (modifierPressed && event.shiftKey && ["c", "i", "j"].includes(lowered));
 
       const printScreenPressed = event.key === "PrintScreen";
 
-      if (blockedCombo || printScreenPressed) {
+      if (blockedCombo || blockedInspectCombo || printScreenPressed) {
         event.preventDefault();
       }
 
@@ -263,6 +268,8 @@ export function useExamLockdown(options: UseExamLockdownOptions): UseExamLockdow
         void addWarning("cut_attempt", "Cut shortcut blocked");
       } else if (blockedCombo) {
         void addWarning("print_shortcut", `Blocked shortcut: ${event.key}`);
+      } else if (blockedInspectCombo) {
+        void addWarning("inspect_shortcut", `Blocked inspect shortcut: ${event.key}`);
       } else if (printScreenPressed) {
         void addWarning("print_shortcut", "Print screen key pressed");
       }

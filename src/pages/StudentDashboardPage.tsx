@@ -120,7 +120,7 @@ export function StudentDashboardPage({
               {bundleCached ? "Refresh Cached Bundle" : "Prefetch Secure Bundle"}
             </button>
             <Link className="button button-primary" to={`/student/exam/${exam.id}`}>
-              Enter Exam Session
+              Review Instructions
             </Link>
           </div>
 

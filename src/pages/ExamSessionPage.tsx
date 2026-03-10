@@ -46,7 +46,7 @@ function ExamWorkspace({
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [attempt, setAttempt] = useState(storedAttempt);
-  const [serverNowMs] = useState(() => nowMs());
+  const [serverNowMs] = useState(() => storedAttempt.updatedAtMs || nowMs());
   const [submittedAt, setSubmittedAt] = useState<number | null>(storedAttempt.finalizedAtMs ?? null);
 
   useEffect(() => {
@@ -66,6 +66,7 @@ function ExamWorkspace({
     maxWarnings: assignment.maxWarnings,
     initialWarningCount: attempt.warningCount,
     autoSaveIntervalMs: 8 * 60 * 1000,
+    lockToFullscreen: true,
     getSnapshot: () => ({
       answers: Object.fromEntries(
         Object.entries(attempt.answers).map(([questionId, answer]) => [questionId, answer.value])
@@ -338,9 +339,25 @@ export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamS
   const { examId } = useParams();
   const [bundle, setBundle] = useState<PublishedExam | null>(null);
   const [storedAttempt, setStoredAttempt] = useState<StoredAttempt | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const startTime = assignment ? new Date(assignment.startAt).getTime() : 0;
+  const closeTime = assignment ? new Date(assignment.graceSubmitAt).getTime() : 0;
+  const sessionWindowState =
+    !assignment || !exam
+      ? "missing"
+      : currentTime < startTime
+        ? "scheduled"
+        : currentTime > closeTime
+          ? "closed"
+          : "open";
 
   useEffect(() => {
-    if (!assignment || !exam) {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (sessionWindowState !== "open" || !assignment || !exam) {
       return;
     }
 
@@ -361,7 +378,7 @@ export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamS
         if (remoteAttempt) {
           currentAttempt = remoteAttempt;
         } else {
-          await createRemoteAttempt(currentUid, cachedBundle, localAttempt);
+          currentAttempt = (await createRemoteAttempt(currentUid, cachedBundle, localAttempt)) || localAttempt;
         }
       }
 
@@ -371,9 +388,9 @@ export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamS
     }
 
     void hydrateSession();
-  }, [appMode, assignment, currentUid, exam, examId]);
+  }, [appMode, assignment, currentUid, exam, examId, sessionWindowState]);
 
-  if (!assignment || !exam) {
+  if (sessionWindowState === "missing") {
     return (
       <div className="page-shell">
         <article className="completion-card">
@@ -384,6 +401,42 @@ export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamS
       </div>
     );
   }
+
+  if (sessionWindowState === "scheduled") {
+    return (
+      <div className="page-shell">
+        <article className="completion-card">
+          <StatusPill tone="warning" label="Exam not open yet" />
+          <h1>The live paper is still locked.</h1>
+          <p>Wait for the official start time, then launch the secure session from the instruction page.</p>
+          <div className="actions-row">
+            <Link className="button button-primary" to={`/student/exam/${exam?.id || examId}`}>
+              Return to instructions
+            </Link>
+          </div>
+        </article>
+      </div>
+    );
+  }
+
+  if (sessionWindowState === "closed") {
+    return (
+      <div className="page-shell">
+        <article className="completion-card">
+          <StatusPill tone="accent" label="Exam window closed" />
+          <h1>The live paper can no longer be launched.</h1>
+          <p>The grace submission deadline has already passed for this assignment.</p>
+          <div className="actions-row">
+            <Link className="button button-primary" to="/student">
+              Return to student desk
+            </Link>
+          </div>
+        </article>
+      </div>
+    );
+  }
+
+  const activeAssignment = assignment!;
 
   if (!bundle || !storedAttempt) {
     return (
@@ -400,7 +453,7 @@ export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamS
   return (
     <ExamWorkspace
       appMode={appMode}
-      assignment={assignment}
+      assignment={activeAssignment}
       currentUid={currentUid}
       exam={bundle}
       storedAttempt={storedAttempt}
