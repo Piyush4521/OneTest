@@ -35,6 +35,15 @@ interface ExamWorkspaceProps {
   storedAttempt: StoredAttempt;
 }
 
+function formatRemainingTime(remainingMs: number) {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+}
+
 function ExamWorkspace({
   appMode,
   assignment,
@@ -56,6 +65,11 @@ function ExamWorkspace({
   const markedForReview = exam.questions
     .filter((question) => attempt.answers[question.id]?.markedForReview)
     .map((question) => question.id);
+  const answeredCount = exam.questions.filter(
+    (question) => (attempt.answers[question.id]?.value.length || 0) > 0
+  ).length;
+  const reviewCount = markedForReview.length;
+  const unansweredCount = Math.max(0, exam.questions.length - answeredCount);
 
   const lockdown = useExamLockdown({
     examId: exam.id,
@@ -120,6 +134,8 @@ function ExamWorkspace({
   });
 
   const activeQuestion = exam.questions[activeQuestionIndex];
+  const progressPercent = Math.round(((activeQuestionIndex + 1) / exam.questions.length) * 100);
+  const remainingTimeLabel = formatRemainingTime(lockdown.remainingMs);
 
   function updateAnswer(question: ExamQuestion, nextValue: string[]) {
     const nextAttempt: StoredAttempt = {
@@ -209,26 +225,54 @@ function ExamWorkspace({
   return (
     <div className="exam-page">
       <header className="exam-header">
-        <div>
+        <div className="exam-header-primary">
           <p className="panel-label">Live Session</p>
           <h1>{exam.settings.title}</h1>
+          <div className="stacked-pills">
+            <StatusPill tone="neutral" label={exam.settings.code} />
+            <StatusPill tone="neutral" label={exam.settings.subject} />
+            <StatusPill tone="neutral" label={`${exam.questions.length} questions`} />
+          </div>
         </div>
-        <div className="exam-header-actions">
-          <StatusPill
-            tone="warning"
-            label={`${lockdown.warningCount}/${assignment.maxWarnings} warnings`}
-          />
-          <StatusPill tone="accent" label={`${Math.ceil(lockdown.remainingMs / 60000)} min left`} />
+        <div className="exam-timer-card">
+          <span className="exam-timer-label">Time Remaining</span>
+          <strong className="exam-timer-value">{remainingTimeLabel}</strong>
+          <div className="exam-header-actions">
+            <StatusPill
+              tone="warning"
+              label={`${lockdown.warningCount}/${assignment.maxWarnings} warnings`}
+            />
+            <StatusPill tone="accent" label={`Q ${activeQuestionIndex + 1}/${exam.questions.length}`} />
+          </div>
         </div>
       </header>
 
-      <main className="exam-grid">
-        <section className="question-panel">
-          <div className="question-meta">
-            <span>{activeQuestion.section}</span>
+      <main className="exam-grid exam-grid-enhanced">
+        <section className="question-panel question-panel-enhanced">
+          <div className="question-progress-row">
+            <div>
+              <span className="question-index">
+                Question {activeQuestionIndex + 1} of {exam.questions.length}
+              </span>
+              <p className="helper-copy">
+                {answeredCount} answered, {reviewCount} marked for review, {unansweredCount} remaining
+              </p>
+            </div>
             <button className="ghost-button" onClick={() => setPaletteOpen(true)}>
               Open palette
             </button>
+          </div>
+
+          <div className="progress-track">
+            <span style={{ width: `${progressPercent}%` }} />
+          </div>
+
+          <div className="question-meta">
+            <span>{activeQuestion.section}</span>
+            <div className="question-chip-row">
+              <span className="question-chip">Marks {activeQuestion.marks}</span>
+              <span className="question-chip">Negative {activeQuestion.negativeMarks}</span>
+            </div>
           </div>
 
           <h2 className="question-prompt">{activeQuestion.prompt}</h2>
@@ -263,12 +307,47 @@ function ExamWorkspace({
         </section>
 
         <aside className="exam-sidebar">
-          <article className="surface-card surface-card-contrast">
-            <p className="panel-label">Session health</p>
+          <article className="surface-card surface-card-contrast exam-sidebar-card">
+            <p className="panel-label">Attempt Summary</p>
+            <div className="review-detail-grid exam-summary-grid">
+              <div className="review-detail">
+                <span>Answered</span>
+                <strong>{answeredCount}</strong>
+              </div>
+              <div className="review-detail">
+                <span>Review</span>
+                <strong>{reviewCount}</strong>
+              </div>
+              <div className="review-detail">
+                <span>Remaining</span>
+                <strong>{unansweredCount}</strong>
+              </div>
+              <div className="review-detail">
+                <span>Warnings</span>
+                <strong>{lockdown.warningCount}</strong>
+              </div>
+            </div>
+
+            <div className="exam-legend">
+              <div className="exam-legend-row">
+                <span className="legend-dot answered" />
+                <small>Answered</small>
+              </div>
+              <div className="exam-legend-row">
+                <span className="legend-dot review" />
+                <small>Review</small>
+              </div>
+              <div className="exam-legend-row">
+                <span className="legend-dot idle" />
+                <small>Not answered</small>
+              </div>
+            </div>
+
             <ul className="signal-list">
               <li>{lockdown.isOffline ? "Offline mode active" : "Online and checkpoint-ready"}</li>
               <li>{lockdown.isHidden ? "Tab hidden: warning issued" : "Tab in focus"}</li>
               <li>Checkpoint interval: 8 minutes</li>
+              <li>Fullscreen lock requested for the live session.</li>
             </ul>
           </article>
         </aside>
@@ -283,7 +362,7 @@ function ExamWorkspace({
         <div className="palette-header">
           <div>
             <p className="panel-label">Question Palette</p>
-            <h2>Jump across the paper fast.</h2>
+            <h2>Jump across the paper without leaving the live shell.</h2>
           </div>
           <button className="ghost-button" onClick={() => setPaletteOpen(false)}>
             Close

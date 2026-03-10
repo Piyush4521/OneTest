@@ -73,12 +73,15 @@ export function StudentDashboardPage({
       <section className="section-header">
         <div>
           <p className="panel-label">Student Desk</p>
-          <h1 className="section-title">Everything important stays one thumb tap away.</h1>
+          <h1 className="section-title">One controlled launch path from assignment to live paper.</h1>
         </div>
-        <StatusPill
-          tone={bundleCached ? "success" : "warning"}
-          label={bundleCached ? "Offline bundle ready" : "Prefetch recommended"}
-        />
+        <div className="status-stack">
+          <StatusPill tone="accent" label={assignment.status.replace("_", " ")} />
+          <StatusPill
+            tone={bundleCached ? "success" : "warning"}
+            label={bundleCached ? "Offline bundle ready" : "Prefetch recommended"}
+          />
+        </div>
       </section>
 
       <section className="metric-grid">
@@ -99,14 +102,33 @@ export function StudentDashboardPage({
         />
       </section>
 
-      <section className="page-grid">
-        <article className="surface-card">
+      <section className="desk-grid">
+        <article className="surface-card desk-card-primary">
           <div className="card-header">
             <div>
               <p className="panel-label">Assigned Exam</p>
               <h2>{assignment.title}</h2>
             </div>
             <StatusPill tone="accent" label={assignment.bundleVersion} />
+          </div>
+
+          <div className="fact-grid">
+            <article className="fact-card">
+              <span>Subject</span>
+              <strong>{exam.settings.subject}</strong>
+            </article>
+            <article className="fact-card">
+              <span>Course Code</span>
+              <strong>{exam.settings.code}</strong>
+            </article>
+            <article className="fact-card">
+              <span>Questions</span>
+              <strong>{exam.questions.length}</strong>
+            </article>
+            <article className="fact-card">
+              <span>Candidate</span>
+              <strong>{currentUser?.name || "Student"}</strong>
+            </article>
           </div>
 
           <ul className="signal-list">
@@ -127,18 +149,61 @@ export function StudentDashboardPage({
           <p className="helper-copy">{statusMessage}</p>
         </article>
 
-        <article className="surface-card surface-card-contrast">
-          <p className="panel-label">Session posture</p>
-          <h2>Zero-distraction mode</h2>
-          <p className="surface-copy">
-            The exam runner uses a fixed bottom action bar, a quick-jump palette, sparse background
-            checkpoints, and warning-driven auto-submit logic.
-          </p>
-          <div className="stacked-pills">
-            <StatusPill tone="neutral" label="Bottom navigation" />
-            <StatusPill tone="neutral" label="Question palette sheet" />
-            <StatusPill tone="neutral" label="Offline-first attempt state" />
-          </div>
+        <aside className="desk-side-stack">
+          <article className="surface-card surface-card-contrast">
+            <p className="panel-label">Candidate Readiness</p>
+            <h2>Launch only after the device and student are ready.</h2>
+            <div className="readiness-list">
+              <div className="readiness-row">
+                <span>Identity</span>
+                <strong>{currentUser?.email || "demo@student.local"}</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Bundle</span>
+                <strong>{bundleCached ? "Stored locally" : "Prefetch pending"}</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Security gate</span>
+                <strong>Instructions + declaration</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Live shell</span>
+                <strong>Fullscreen request on launch</strong>
+              </div>
+            </div>
+          </article>
+
+          <article className="surface-card">
+            <p className="panel-label">Session Posture</p>
+            <h2>Zero-distraction mode</h2>
+            <p className="surface-copy">
+              The exam runner uses a fixed bottom action bar, a quick-jump palette, sparse background
+              checkpoints, and warning-driven auto-submit logic.
+            </p>
+            <div className="stacked-pills">
+              <StatusPill tone="neutral" label="Bottom navigation" />
+              <StatusPill tone="neutral" label="Question palette sheet" />
+              <StatusPill tone="neutral" label="Offline-first attempt state" />
+            </div>
+          </article>
+        </aside>
+      </section>
+
+      <section className="workflow-strip">
+        <article className="workflow-card">
+          <span>1</span>
+          <strong>Prefetch</strong>
+          <p>Store the bundle locally before the lab gets crowded.</p>
+        </article>
+        <article className="workflow-card">
+          <span>2</span>
+          <strong>Review rules</strong>
+          <p>Launch happens only after the candidate accepts the declaration.</p>
+        </article>
+        <article className="workflow-card">
+          <span>3</span>
+          <strong>Attempt</strong>
+          <p>Warnings, timing, progress, and submission stay visible all the way through.</p>
         </article>
       </section>
     </div>

@@ -239,15 +239,18 @@ export function FacultyPage({
       <section className="section-header">
         <div>
           <p className="panel-label">Faculty Console</p>
-          <h1 className="section-title">Publish secure bundles, not fragile document trees.</h1>
+          <h1 className="section-title">Publish, assign, review, and release from one operational workspace.</h1>
         </div>
-        <StatusPill
-          tone="success"
-          label={`Live window: ${formatExamWindow(
-            publishedExam.settings.startAt,
-            publishedExam.settings.hardEndAt
-          )}`}
-        />
+        <div className="status-stack">
+          <StatusPill
+            tone="success"
+            label={`Live window: ${formatExamWindow(
+              publishedExam.settings.startAt,
+              publishedExam.settings.hardEndAt
+            )}`}
+          />
+          <StatusPill tone="neutral" label={currentUser?.name || "Faculty operator"} />
+        </div>
       </section>
 
       <section className="metric-grid">
@@ -266,6 +269,36 @@ export function FacultyPage({
           value={publishedExam.bundleHash || "Pending"}
           detail="Short SHA-256 fingerprint for integrity checks."
         />
+      </section>
+
+      <section className="surface-card faculty-overview-card">
+        <div className="card-header">
+          <div>
+            <p className="panel-label">Control Room</p>
+            <h2>Everything needed for one exam cycle stays in this screen.</h2>
+          </div>
+          <div className="stacked-pills">
+            <StatusPill tone="neutral" label={appMode === "firebase" ? "Live Firestore mode" : "Demo mode"} />
+            <StatusPill tone="accent" label={`${submissionReviews.length} submissions loaded`} />
+          </div>
+        </div>
+        <div className="workflow-strip workflow-strip-compact">
+          <article className="workflow-card active">
+            <span>1</span>
+            <strong>Author</strong>
+            <p>Set schedule, duration, warning policy, and student instructions.</p>
+          </article>
+          <article className="workflow-card active">
+            <span>2</span>
+            <strong>Publish</strong>
+            <p>Generate a student-safe bundle and assignment records in one action.</p>
+          </article>
+          <article className="workflow-card">
+            <span>3</span>
+            <strong>Review</strong>
+            <p>Score finalized attempts and move results from draft to published.</p>
+          </article>
+        </div>
       </section>
 
       <section className="page-grid">

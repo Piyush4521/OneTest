@@ -311,10 +311,151 @@ a {
   font-size: 1.05rem;
 }
 
+.hero-intro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.hero-callout {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(255, 243, 221, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 243, 221, 0.08);
+}
+
+.hero-callout-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: rgba(255, 243, 221, 0.72);
+}
+
+.hero-callout strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.hero-callout small {
+  color: rgba(255, 243, 221, 0.72);
+}
+
 .hero-note {
   margin-top: 40px;
   padding-top: 18px;
   border-top: 1px solid rgba(246, 241, 230, 0.14);
+}
+
+.portal-step-strip,
+.workflow-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.workflow-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workflow-strip-compact {
+  margin-top: 0;
+}
+
+.portal-step-card,
+.workflow-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(16, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.portal-step-card {
+  background: rgba(255, 243, 221, 0.08);
+  border-color: rgba(255, 243, 221, 0.12);
+}
+
+.portal-step-card span,
+.workflow-card span {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(16, 32, 51, 0.08);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+}
+
+.portal-step-card span {
+  background: rgba(255, 243, 221, 0.14);
+}
+
+.portal-step-card strong,
+.workflow-card strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
+}
+
+.portal-step-card p,
+.workflow-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.workflow-card.active {
+  border-color: rgba(30, 138, 122, 0.22);
+  background: rgba(30, 138, 122, 0.08);
+}
+
+.portal-side-card h2,
+.surface-card h2,
+.auth-card h2 {
+  margin: 6px 0 0;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.portal-side-list,
+.readiness-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.portal-side-row,
+.readiness-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 243, 221, 0.08);
+  border: 1px solid rgba(255, 243, 221, 0.12);
+}
+
+.portal-side-row span,
+.readiness-row span {
+  color: rgba(246, 241, 230, 0.72);
+}
+
+.readiness-row {
+  background: rgba(16, 32, 51, 0.06);
+  border-color: rgba(16, 32, 51, 0.08);
+}
+
+.readiness-row span,
+.fact-card span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .hero-note-kicker,
@@ -416,6 +557,9 @@ a {
 
 .metric-card {
   padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 249, 238, 0.78)),
+    var(--panel);
 }
 
 .metric-value {
@@ -447,6 +591,38 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 18px;
+}
+
+.desk-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.95fr;
+  gap: 18px;
+}
+
+.desk-side-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.fact-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.fact-card strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
 }
 
 .field {
@@ -498,6 +674,34 @@ a {
   display: grid;
   gap: 12px;
   margin-top: 18px;
+}
+
+.journey-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.journey-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(16, 32, 51, 0.05);
+  border: 1px solid rgba(16, 32, 51, 0.08);
+}
+
+.journey-index {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(16, 32, 51, 0.08);
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
 }
 
 .launch-check {
@@ -682,6 +886,35 @@ a {
   margin: 6px 0 0;
 }
 
+.exam-header-primary {
+  display: grid;
+  gap: 12px;
+}
+
+.exam-timer-card {
+  min-width: min(100%, 280px);
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(16, 32, 51, 0.98), rgba(23, 38, 58, 0.94));
+  color: #f6f1e6;
+}
+
+.exam-timer-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: rgba(246, 241, 230, 0.7);
+}
+
+.exam-timer-value {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  line-height: 1;
+}
+
 .question-panel {
   padding: 24px;
   border: 1px solid var(--line);
@@ -692,6 +925,76 @@ a {
 
 .question-meta {
   align-items: center;
+}
+
+.question-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.progress-track {
+  position: relative;
+  height: 10px;
+  margin: 18px 0;
+  border-radius: 999px;
+  background: rgba(16, 32, 51, 0.08);
+  overflow: hidden;
+}
+
+.progress-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+}
+
+.question-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.question-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(16, 32, 51, 0.06);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.exam-legend {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.exam-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.legend-dot.answered {
+  background: rgba(30, 138, 122, 0.9);
+}
+
+.legend-dot.review {
+  background: rgba(215, 97, 62, 0.9);
+}
+
+.legend-dot.idle {
+  background: rgba(255, 243, 221, 0.48);
+  box-shadow: inset 0 0 0 1px rgba(255, 243, 221, 0.24);
 }
 
 .question-prompt {
@@ -859,6 +1162,7 @@ a {
   .topbar,
   .section-header,
   .card-header,
+  .question-progress-row,
   .question-meta,
   .palette-header,
   .exam-header,
@@ -874,11 +1178,19 @@ a {
 
   .hero-grid,
   .page-grid,
+  .desk-grid,
   .exam-grid,
   .metric-grid,
   .form-grid,
   .launch-grid,
   .review-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-intro-grid,
+  .portal-step-strip,
+  .workflow-strip,
+  .fact-grid {
     grid-template-columns: 1fr;
   }
 
@@ -924,6 +1236,10 @@ a {
   }
 
   .review-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fact-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

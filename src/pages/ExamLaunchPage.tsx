@@ -103,7 +103,7 @@ export function ExamLaunchPage({
       <section className="section-header">
         <div>
           <p className="panel-label">Exam Instructions</p>
-          <h1 className="section-title">Review the rules before secure launch.</h1>
+          <h1 className="section-title">Review the launch packet before entering the live paper.</h1>
         </div>
         <StatusPill
           tone={
@@ -117,6 +117,24 @@ export function ExamLaunchPage({
                 : "Window closed"
           }
         />
+      </section>
+
+      <section className="workflow-strip workflow-strip-compact">
+        <article className="workflow-card active">
+          <span>1</span>
+          <strong>Identity bound</strong>
+          <p>Exam access stays attached to the signed-in student account.</p>
+        </article>
+        <article className="workflow-card active">
+          <span>2</span>
+          <strong>Rules reviewed</strong>
+          <p>Instructions and restrictions are confirmed before launch.</p>
+        </article>
+        <article className="workflow-card">
+          <span>3</span>
+          <strong>Secure entry</strong>
+          <p>Fullscreen is requested immediately before the live session opens.</p>
+        </article>
       </section>
 
       <section className="metric-grid">
@@ -138,13 +156,32 @@ export function ExamLaunchPage({
       </section>
 
       <section className="launch-grid">
-        <article className="surface-card">
+        <article className="surface-card launch-main-card">
           <div className="card-header">
             <div>
               <p className="panel-label">Launch Packet</p>
               <h2>{assignment.title}</h2>
             </div>
             <StatusPill tone="accent" label={`${exam.questions.length} questions`} />
+          </div>
+
+          <div className="fact-grid">
+            <article className="fact-card">
+              <span>Subject</span>
+              <strong>{exam.settings.subject}</strong>
+            </article>
+            <article className="fact-card">
+              <span>Course Code</span>
+              <strong>{exam.settings.code}</strong>
+            </article>
+            <article className="fact-card">
+              <span>Duration</span>
+              <strong>{assignment.durationMinutes} minutes</strong>
+            </article>
+            <article className="fact-card">
+              <span>Warnings</span>
+              <strong>{assignment.maxWarnings} max</strong>
+            </article>
           </div>
 
           <ul className="signal-list">
@@ -188,20 +225,45 @@ export function ExamLaunchPage({
           </p>
         </article>
 
-        <article className="surface-card surface-card-contrast">
-          <p className="panel-label">Student Instructions</p>
-          <h2>Read once. Then stay inside the paper.</h2>
-          <ul className="signal-list">
-            {exam.settings.instructions.map((instruction) => (
-              <li key={instruction}>{instruction}</li>
-            ))}
-          </ul>
-          <div className="stacked-pills">
-            <StatusPill tone="neutral" label="Declaration gate" />
-            <StatusPill tone="neutral" label="Fullscreen launch" />
-            <StatusPill tone="neutral" label="Session resume support" />
-          </div>
-        </article>
+        <aside className="desk-side-stack">
+          <article className="surface-card surface-card-contrast">
+            <p className="panel-label">Student Instructions</p>
+            <h2>Read once. Then stay inside the paper.</h2>
+            <ul className="signal-list">
+              {exam.settings.instructions.map((instruction) => (
+                <li key={instruction}>{instruction}</li>
+              ))}
+            </ul>
+            <div className="stacked-pills">
+              <StatusPill tone="neutral" label="Declaration gate" />
+              <StatusPill tone="neutral" label="Fullscreen launch" />
+              <StatusPill tone="neutral" label="Session resume support" />
+            </div>
+          </article>
+
+          <article className="surface-card">
+            <p className="panel-label">Launch Readiness</p>
+            <h2>Confirm the device before you open the paper.</h2>
+            <div className="readiness-list">
+              <div className="readiness-row">
+                <span>Candidate</span>
+                <strong>{currentUser?.name || currentUid || "Student"}</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Bundle cache</span>
+                <strong>{bundleCached ? "Available offline" : "Not cached yet"}</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Attempt state</span>
+                <strong>{attemptExists ? "Resume available" : "Fresh launch"}</strong>
+              </div>
+              <div className="readiness-row">
+                <span>Next step</span>
+                <strong>Secure fullscreen launch</strong>
+              </div>
+            </div>
+          </article>
+        </aside>
       </section>
     </div>
   );
