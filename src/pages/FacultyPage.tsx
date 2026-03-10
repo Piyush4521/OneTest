@@ -4,30 +4,34 @@ import { MetricCard } from "@/components/MetricCard";
 import { StatusPill } from "@/components/StatusPill";
 import { createBundleHash, formatExamWindow, toLocalDateTimeValue } from "@/lib/examModel";
 import { importQuestionsFromFile } from "@/lib/importQuestions";
-import type { FacultyImportPreview, PublishedExam } from "@/types/exam";
+import type { FacultyImportPreview, PortalUser, PublishedExam } from "@/types/exam";
 
 interface FacultyPageProps {
+  appMode: "demo" | "firebase";
+  currentUser: PortalUser | null;
   publishedExam: PublishedExam;
-  onPublishExam: (exam: PublishedExam) => void;
+  onPublishExam: (exam: PublishedExam, targetUids: string[]) => Promise<{ assignedCount: number }>;
+  statusMessage: string | null;
 }
 
-export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) {
+export function FacultyPage({
+  appMode,
+  currentUser,
+  publishedExam,
+  onPublishExam,
+  statusMessage: externalStatusMessage
+}: FacultyPageProps) {
   const [importPreview, setImportPreview] = useState<FacultyImportPreview | null>(null);
   const [statusMessage, setStatusMessage] = useState("Waiting for a new question file.");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [targetUids, setTargetUids] = useState("");
   const [title, setTitle] = useState(publishedExam.settings.title);
   const [subject, setSubject] = useState(publishedExam.settings.subject);
   const [code, setCode] = useState(publishedExam.settings.code);
-  const [durationMinutes, setDurationMinutes] = useState(
-    String(publishedExam.settings.durationMinutes)
-  );
+  const [durationMinutes, setDurationMinutes] = useState(String(publishedExam.settings.durationMinutes));
   const [maxWarnings, setMaxWarnings] = useState(String(publishedExam.settings.maxWarnings));
-  const [startAt, setStartAt] = useState(
-    toLocalDateTimeValue(new Date(publishedExam.settings.startAt))
-  );
-  const [hardEndAt, setHardEndAt] = useState(
-    toLocalDateTimeValue(new Date(publishedExam.settings.hardEndAt))
-  );
+  const [startAt, setStartAt] = useState(toLocalDateTimeValue(new Date(publishedExam.settings.startAt)));
+  const [hardEndAt, setHardEndAt] = useState(toLocalDateTimeValue(new Date(publishedExam.settings.hardEndAt)));
   const [graceSubmitAt, setGraceSubmitAt] = useState(
     toLocalDateTimeValue(new Date(publishedExam.settings.graceSubmitAt))
   );
@@ -46,17 +50,14 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
       setImportPreview(preview);
       setStatusMessage(`Parsed ${preview.questions.length} questions from ${preview.sourceName}.`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not parse question file.";
+      const message = error instanceof Error ? error.message : "Could not parse question file.";
       setStatusMessage(message);
     }
   }
 
   async function handlePublish() {
     setIsPublishing(true);
-    const nextQuestions = importPreview?.questions.length
-      ? importPreview.questions
-      : publishedExam.questions;
+    const nextQuestions = importPreview?.questions.length ? importPreview.questions : publishedExam.questions;
     const bundleHash = await createBundleHash(nextQuestions);
 
     const nextExam: PublishedExam = {
@@ -65,6 +66,7 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
       bundleVersion: new Date().toISOString(),
       publishedAt: new Date().toISOString(),
       status: "published",
+      createdBy: currentUser?.uid,
       questions: nextQuestions,
       settings: {
         title,
@@ -82,11 +84,16 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
       }
     };
 
-    onPublishExam(nextExam);
-    setStatusMessage(
-      `Published ${nextExam.settings.title} with ${nextExam.questions.length} questions.`
-    );
-    setIsPublishing(false);
+    try {
+      const publishResult = await onPublishExam(nextExam, targetUids.split(/[\s,]+/).filter(Boolean));
+      setStatusMessage(
+        publishResult.assignedCount > 0
+          ? `Published ${nextExam.settings.title} and assigned ${publishResult.assignedCount} student account(s).`
+          : `Published ${nextExam.settings.title} with ${nextExam.questions.length} questions.`
+      );
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   return (
@@ -149,9 +156,9 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
             <label className="field">
               <span>Duration (minutes)</span>
               <input
-                type="number"
                 min="15"
                 step="5"
+                type="number"
                 value={durationMinutes}
                 onChange={(event) => setDurationMinutes(event.target.value)}
               />
@@ -159,20 +166,16 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
             <label className="field">
               <span>Max warnings</span>
               <input
-                type="number"
-                min="1"
                 max="10"
+                min="1"
+                type="number"
                 value={maxWarnings}
                 onChange={(event) => setMaxWarnings(event.target.value)}
               />
             </label>
             <label className="field">
               <span>Start time</span>
-              <input
-                type="datetime-local"
-                value={startAt}
-                onChange={(event) => setStartAt(event.target.value)}
-              />
+              <input type="datetime-local" value={startAt} onChange={(event) => setStartAt(event.target.value)} />
             </label>
             <label className="field">
               <span>Hard end time</span>
@@ -194,12 +197,20 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
 
           <label className="field field-full">
             <span>Student instructions</span>
-            <textarea
-              rows={6}
-              value={instructionsText}
-              onChange={(event) => setInstructionsText(event.target.value)}
-            />
+            <textarea rows={6} value={instructionsText} onChange={(event) => setInstructionsText(event.target.value)} />
           </label>
+
+          {appMode === "firebase" ? (
+            <label className="field field-full">
+              <span>Assign to student UIDs</span>
+              <textarea
+                placeholder="uid-1, uid-2, uid-3"
+                rows={4}
+                value={targetUids}
+                onChange={(event) => setTargetUids(event.target.value)}
+              />
+            </label>
+          ) : null}
         </article>
 
         <article className="surface-card">
@@ -215,24 +226,20 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
           </div>
 
           <label className="uploader">
-            <input type="file" accept=".csv,.xls,.xlsx" onChange={handleFileChange} />
+            <input accept=".csv,.xls,.xlsx" type="file" onChange={handleFileChange} />
             <span>Drop a CSV/XLSX file here or tap to select one.</span>
           </label>
 
           <p className="helper-copy">{statusMessage}</p>
 
           <div className="question-preview">
-            {(importPreview?.questions || publishedExam.questions)
-              .slice(0, 4)
-              .map((question) => (
-                <article className="question-preview-card" key={question.id}>
-                  <span className="question-index">{question.section}</span>
-                  <p>{question.prompt}</p>
-                  <small>
-                    {question.type.replace("_", " ")} • {question.marks} mark
-                  </small>
-                </article>
-              ))}
+            {(importPreview?.questions || publishedExam.questions).slice(0, 4).map((question) => (
+              <article className="question-preview-card" key={question.id}>
+                <span className="question-index">{question.section}</span>
+                <p>{question.prompt}</p>
+                <small>{question.type.replace("_", " ")} - {question.marks} mark</small>
+              </article>
+            ))}
           </div>
 
           <div className="actions-row">
@@ -244,9 +251,13 @@ export function FacultyPage({ publishedExam, onPublishExam }: FacultyPageProps) 
               {isPublishing ? "Publishing..." : "Publish Secure Bundle"}
             </button>
             <span className="helper-copy">
-              Publishing updates the demo student assignment immediately.
+              {appMode === "firebase"
+                ? `Publishing as ${currentUser?.name || "faculty"} writes exam, answer key, bundle, and assignments into Firestore.`
+                : "Publishing updates the local demo student assignment immediately."}
             </span>
           </div>
+
+          {externalStatusMessage ? <p className="helper-copy">{externalStatusMessage}</p> : null}
         </article>
       </section>
     </div>

@@ -43,12 +43,17 @@
     "subject": "string",
     "courseCode": "string",
     "durationMinutes": 60,
+    "maxWarnings": 3,
+    "startAt": "timestamp",
+    "hardEndAt": "timestamp",
+    "graceSubmitAt": "timestamp",
     "questionCount": 50,
-    "negativeMarking": false,
-    "instructionsHtml": "string",
+    "instructions": ["string"],
     "published": true,
     "bundleVersion": "2026-03-10T09:00:00Z",
+    "bundleSha256": "string",
     "createdBy": "uid",
+    "publishedAt": "timestamp",
     "createdAt": "timestamp",
     "updatedAt": "timestamp"
   },
@@ -96,6 +101,41 @@
     },
     "createdBy": "uid",
     "createdAt": "timestamp"
+  },
+
+  "examBundles/{examId}": {
+    "examId": "string",
+    "title": "string",
+    "subject": "string",
+    "courseCode": "string",
+    "durationMinutes": 60,
+    "maxWarnings": 3,
+    "startAt": "timestamp",
+    "hardEndAt": "timestamp",
+    "graceSubmitAt": "timestamp",
+    "instructions": ["string"],
+    "bundleVersion": "2026-03-10T09:00:00Z",
+    "bundleHash": "string",
+    "publishedAt": "timestamp",
+    "createdBy": "uid",
+    "status": "published",
+    "questions": [
+      {
+        "id": "q1",
+        "section": "General Aptitude",
+        "type": "single_choice | multi_choice | numeric | text",
+        "prompt": "string",
+        "options": [
+          {
+            "id": "A",
+            "label": "string"
+          }
+        ],
+        "correctOptionIds": [],
+        "marks": 1,
+        "negativeMarks": 0
+      }
+    ]
   },
 
   "submissions/{examId}_{uid}": {

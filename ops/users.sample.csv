@@ -1,0 +1,4 @@
+email,password,name,role,collegeId,department,semester,seatNumber,active
+admin@college.edu,ChangeMe123!,Portal Admin,admin,ADMIN-01,Administration,,,true
+faculty.cse@college.edu,ChangeMe123!,CSE Faculty,faculty,FAC-100,Computer Science,,,true
+student001@college.edu,ChangeMe123!,Student One,student,STU-001,Computer Science,6,A-17,true

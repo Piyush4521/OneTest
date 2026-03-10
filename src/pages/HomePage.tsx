@@ -2,15 +2,16 @@ import { Link } from "react-router-dom";
 
 import { MetricCard } from "@/components/MetricCard";
 import { StatusPill } from "@/components/StatusPill";
-import type { UserRole } from "@/types/exam";
+import type { PortalUser, UserRole } from "@/types/exam";
 
 interface HomePageProps {
   role: UserRole;
   onRoleChange: (role: UserRole) => void;
   appMode: "demo" | "firebase";
+  currentUser: PortalUser | null;
 }
 
-export function HomePage({ role, onRoleChange, appMode }: HomePageProps) {
+export function HomePage({ role, onRoleChange, appMode, currentUser }: HomePageProps) {
   return (
     <div className="page-shell">
       <section className="hero-grid">
@@ -29,29 +30,33 @@ export function HomePage({ role, onRoleChange, appMode }: HomePageProps) {
             This build is opinionated: local-first exam delivery, sparse writes, offline resilience,
             and a student experience that feels deliberate on small screens.
           </p>
-          <div className="role-toggle">
-            <button
-              className={role === "student" ? "segmented active" : "segmented"}
-              onClick={() => onRoleChange("student")}
-            >
-              Student View
-            </button>
-            <button
-              className={role === "faculty" ? "segmented active" : "segmented"}
-              onClick={() => onRoleChange("faculty")}
-            >
-              Faculty View
-            </button>
-          </div>
+          {appMode === "demo" ? (
+            <div className="role-toggle">
+              <button
+                className={role === "student" ? "segmented active" : "segmented"}
+                onClick={() => onRoleChange("student")}
+              >
+                Student View
+              </button>
+              <button
+                className={role === "faculty" ? "segmented active" : "segmented"}
+                onClick={() => onRoleChange("faculty")}
+              >
+                Faculty View
+              </button>
+            </div>
+          ) : (
+            <div className="status-stack">
+              <StatusPill tone="neutral" label={currentUser?.name || "Authenticated"} />
+              <StatusPill tone="accent" label={`Role: ${role}`} />
+            </div>
+          )}
           <div className="hero-actions">
-            <Link
-              className="button button-primary"
-              to={role === "faculty" ? "/faculty" : "/student"}
-            >
+            <Link className="button button-primary" to={role === "faculty" ? "/faculty" : "/student"}>
               Open {role === "faculty" ? "Faculty Console" : "Student Desk"}
             </Link>
             <Link className="button button-secondary" to="/student/exam/onetest-demo-2026">
-              Enter Demo Exam
+              Enter {appMode === "demo" ? "Demo Exam" : "Exam Session"}
             </Link>
           </div>
         </div>

@@ -4,6 +4,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { StatusPill } from "@/components/StatusPill";
 import { buildAttemptId, createAttemptFromExam } from "@/lib/examModel";
 import { getAttempt, getExamBundle, saveAttempt } from "@/lib/examVault";
+import {
+  createRemoteAttempt,
+  finalizeRemoteAttempt,
+  loadRemoteAttempt,
+  syncRemoteAttempt
+} from "@/lib/portalGateway";
 import { nowMs } from "@/lib/time";
 import { useExamLockdown } from "@/hooks/useExamLockdown";
 import type {
@@ -15,18 +21,24 @@ import type {
 } from "@/types/exam";
 
 interface ExamSessionPageProps {
-  assignment: Assignment;
-  exam: PublishedExam;
+  appMode: "demo" | "firebase";
+  assignment: Assignment | null;
+  currentUid?: string;
+  exam: PublishedExam | null;
 }
 
 interface ExamWorkspaceProps {
+  appMode: "demo" | "firebase";
   assignment: Assignment;
+  currentUid?: string;
   exam: PublishedExam;
   storedAttempt: StoredAttempt;
 }
 
 function ExamWorkspace({
+  appMode,
   assignment,
+  currentUid,
   exam,
   storedAttempt
 }: ExamWorkspaceProps) {
@@ -35,9 +47,11 @@ function ExamWorkspace({
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [attempt, setAttempt] = useState(storedAttempt);
   const [serverNowMs] = useState(() => nowMs());
-  const [submittedAt, setSubmittedAt] = useState<number | null>(
-    storedAttempt.finalizedAtMs ?? null
-  );
+  const [submittedAt, setSubmittedAt] = useState<number | null>(storedAttempt.finalizedAtMs ?? null);
+
+  useEffect(() => {
+    void saveAttempt(attempt);
+  }, [attempt]);
 
   const markedForReview = exam.questions
     .filter((question) => attempt.answers[question.id]?.markedForReview)
@@ -54,10 +68,7 @@ function ExamWorkspace({
     autoSaveIntervalMs: 8 * 60 * 1000,
     getSnapshot: () => ({
       answers: Object.fromEntries(
-        Object.entries(attempt.answers).map(([questionId, answer]) => [
-          questionId,
-          answer.value
-        ])
+        Object.entries(attempt.answers).map(([questionId, answer]) => [questionId, answer.value])
       ),
       markedForReview
     }),
@@ -68,7 +79,10 @@ function ExamWorkspace({
       };
 
       setAttempt(nextAttempt);
-      await saveAttempt(nextAttempt);
+
+      if (appMode === "firebase" && currentUid) {
+        await syncRemoteAttempt(currentUid, exam, nextAttempt);
+      }
     },
     onWarning: async (warning) => {
       const nextAttempt: StoredAttempt = {
@@ -79,15 +93,17 @@ function ExamWorkspace({
       };
 
       setAttempt(nextAttempt);
-      await saveAttempt(nextAttempt);
+
+      if (appMode === "firebase" && currentUid) {
+        await syncRemoteAttempt(currentUid, exam, nextAttempt);
+      }
     },
     onAutoSubmit: async (_, reason) => {
       const finalizedAtMs = nowMs();
       const nextAttempt: StoredAttempt = {
         ...attempt,
         warningCount: lockdown.warningCount,
-        lastWarningCode:
-          reason === "warning_limit" ? "warning_limit" : attempt.lastWarningCode,
+        lastWarningCode: reason === "warning_limit" ? "warning_limit" : attempt.lastWarningCode,
         status: reason === "manual" ? "submitted" : "auto_submitted",
         updatedAtMs: finalizedAtMs,
         finalizedAtMs
@@ -95,7 +111,10 @@ function ExamWorkspace({
 
       setAttempt(nextAttempt);
       setSubmittedAt(finalizedAtMs);
-      await saveAttempt(nextAttempt);
+
+      if (appMode === "firebase" && currentUid) {
+        await finalizeRemoteAttempt(currentUid, exam, nextAttempt);
+      }
     }
   });
 
@@ -198,10 +217,7 @@ function ExamWorkspace({
             tone="warning"
             label={`${lockdown.warningCount}/${assignment.maxWarnings} warnings`}
           />
-          <StatusPill
-            tone="accent"
-            label={`${Math.ceil(lockdown.remainingMs / 60000)} min left`}
-          />
+          <StatusPill tone="accent" label={`${Math.ceil(lockdown.remainingMs / 60000)} min left`} />
         </div>
       </header>
 
@@ -292,27 +308,18 @@ function ExamWorkspace({
         <button
           className="bottom-action"
           disabled={activeQuestionIndex === 0}
-          onClick={() =>
-            setActiveQuestionIndex((current) => Math.max(0, current - 1))
-          }
+          onClick={() => setActiveQuestionIndex((current) => Math.max(0, current - 1))}
         >
           Previous
         </button>
-        <button
-          className="bottom-action emphasis"
-          onClick={() => toggleReview(activeQuestion.id)}
-        >
-          {attempt.answers[activeQuestion.id]?.markedForReview
-            ? "Review Marked"
-            : "Mark for Review"}
+        <button className="bottom-action emphasis" onClick={() => toggleReview(activeQuestion.id)}>
+          {attempt.answers[activeQuestion.id]?.markedForReview ? "Review Marked" : "Mark for Review"}
         </button>
         {activeQuestionIndex < exam.questions.length - 1 ? (
           <button
             className="bottom-action"
             onClick={() =>
-              setActiveQuestionIndex((current) =>
-                Math.min(exam.questions.length - 1, current + 1)
-              )
+              setActiveQuestionIndex((current) => Math.min(exam.questions.length - 1, current + 1))
             }
           >
             Next
@@ -327,18 +334,36 @@ function ExamWorkspace({
   );
 }
 
-export function ExamSessionPage({ assignment, exam }: ExamSessionPageProps) {
+export function ExamSessionPage({ appMode, assignment, currentUid, exam }: ExamSessionPageProps) {
   const { examId } = useParams();
   const [bundle, setBundle] = useState<PublishedExam | null>(null);
   const [storedAttempt, setStoredAttempt] = useState<StoredAttempt | null>(null);
 
   useEffect(() => {
-    const targetId = examId || exam.id;
+    if (!assignment || !exam) {
+      return;
+    }
+
+    const activeExam = exam;
+    const targetId = examId || activeExam.id;
 
     async function hydrateSession() {
-      const cachedBundle = (await getExamBundle(targetId)) || exam;
-      const currentAttempt =
-        (await getAttempt(buildAttemptId(targetId))) || createAttemptFromExam(cachedBundle);
+      const cachedBundle = (await getExamBundle(targetId)) || activeExam;
+      const localAttempt =
+        (await getAttempt(buildAttemptId(targetId, currentUid || "demo-student"))) ||
+        createAttemptFromExam(cachedBundle, currentUid || "demo-student");
+
+      let currentAttempt = localAttempt;
+
+      if (appMode === "firebase" && currentUid) {
+        const remoteAttempt = await loadRemoteAttempt(targetId, currentUid);
+
+        if (remoteAttempt) {
+          currentAttempt = remoteAttempt;
+        } else {
+          await createRemoteAttempt(currentUid, cachedBundle, localAttempt);
+        }
+      }
 
       setBundle(cachedBundle);
       setStoredAttempt(currentAttempt);
@@ -346,7 +371,19 @@ export function ExamSessionPage({ assignment, exam }: ExamSessionPageProps) {
     }
 
     void hydrateSession();
-  }, [exam, examId]);
+  }, [appMode, assignment, currentUid, exam, examId]);
+
+  if (!assignment || !exam) {
+    return (
+      <div className="page-shell">
+        <article className="completion-card">
+          <StatusPill tone="warning" label="No exam loaded" />
+          <h1>There is no active exam session to open.</h1>
+          <p>Return to the student desk and wait for a valid assignment to appear.</p>
+        </article>
+      </div>
+    );
+  }
 
   if (!bundle || !storedAttempt) {
     return (
@@ -360,5 +397,13 @@ export function ExamSessionPage({ assignment, exam }: ExamSessionPageProps) {
     );
   }
 
-  return <ExamWorkspace assignment={assignment} exam={bundle} storedAttempt={storedAttempt} />;
+  return (
+    <ExamWorkspace
+      appMode={appMode}
+      assignment={assignment}
+      currentUid={currentUid}
+      exam={bundle}
+      storedAttempt={storedAttempt}
+    />
+  );
 }

@@ -36,6 +36,18 @@ VITE_FIREBASE_APP_ID=
 
 The current frontend already detects whether Firebase is configured. When those values are present, the app switches out of demo labeling and can be wired to real Auth and Firestore flows.
 
+For local admin and provisioning scripts, set one of these before running them:
+
+```bash
+FIREBASE_SERVICE_ACCOUNT_KEY=./service-account.json
+```
+
+or
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
+```
+
 ## Build and deploy
 
 ```bash
@@ -56,8 +68,24 @@ Typical Hosting deploy flow:
 npm install -g firebase-tools
 firebase login
 firebase init
-firebase deploy --only hosting,firestore:rules,database
+firebase deploy --only hosting,firestore:rules,firestore:indexes,database
 ```
+
+## Provision users
+
+Bootstrap the first admin or faculty account:
+
+```bash
+npm run bootstrap:user -- --email admin@college.edu --password ChangeMe123! --role admin
+```
+
+Bulk import users from CSV:
+
+```bash
+npm run import:users -- --file ./ops/users.sample.csv
+```
+
+The scripts create or update Firebase Auth users, apply custom role claims, and sync `users/{uid}` Firestore profile documents.
 
 ## Key files
 
@@ -69,6 +97,9 @@ firebase deploy --only hosting,firestore:rules,database
 - `src/lib/examVault.ts`: IndexedDB bundle and attempt storage
 - `docs/architecture.md`: Spark-tier strategy and deployment tradeoffs
 - `docs/firestore-schema.jsonc`: JSON-like schema reference
+- `docs/operations.md`: Firebase setup, user provisioning, and deployment flow
+- `scripts/import-users.mjs`: bulk CSV import for Firebase Auth and Firestore profiles
+- `scripts/bootstrap-user.mjs`: create the first admin or faculty account
 
 ## Reality check
 

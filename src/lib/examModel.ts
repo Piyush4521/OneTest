@@ -1,7 +1,7 @@
 import type { Assignment, AttemptAnswer, PublishedExam, StoredAttempt } from "@/types/exam";
 
-export function buildAttemptId(examId: string) {
-  return `${examId}_demo-student`;
+export function buildAttemptId(examId: string, uid = "demo-student") {
+  return `${examId}_${uid}`;
 }
 
 export function createAssignmentFromExam(exam: PublishedExam): Assignment {
@@ -13,6 +13,7 @@ export function createAssignmentFromExam(exam: PublishedExam): Assignment {
     graceSubmitAt: exam.settings.graceSubmitAt,
     durationMinutes: exam.settings.durationMinutes,
     maxWarnings: exam.settings.maxWarnings,
+    bundleUrl: "",
     bundleVersion: exam.bundleVersion,
     bundleHash: exam.bundleHash,
     status: "assigned"
@@ -31,11 +32,11 @@ export function createEmptyAnswers(exam: PublishedExam) {
   }, {});
 }
 
-export function createAttemptFromExam(exam: PublishedExam): StoredAttempt {
+export function createAttemptFromExam(exam: PublishedExam, uid = "demo-student"): StoredAttempt {
   const now = Date.now();
 
   return {
-    attemptId: buildAttemptId(exam.id),
+    attemptId: buildAttemptId(exam.id, uid),
     examId: exam.id,
     answers: createEmptyAnswers(exam),
     warningCount: 0,
@@ -43,6 +44,16 @@ export function createAttemptFromExam(exam: PublishedExam): StoredAttempt {
     status: "in_progress",
     startedAtMs: now,
     updatedAtMs: now
+  };
+}
+
+export function createStudentSafeExam(exam: PublishedExam): PublishedExam {
+  return {
+    ...exam,
+    questions: exam.questions.map((question) => ({
+      ...question,
+      correctOptionIds: []
+    }))
   };
 }
 

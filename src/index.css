@@ -189,6 +189,14 @@ a {
   gap: 10px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -391,6 +399,11 @@ a {
   color: var(--ink);
 }
 
+.topbar-button {
+  min-height: 40px;
+  padding-inline: 14px;
+}
+
 .ghost-button {
   border: 0;
   background: transparent;
@@ -506,6 +519,64 @@ a {
   gap: 14px;
   max-width: 640px;
   margin: 72px auto 0;
+}
+
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  width: min(1080px, calc(100% - 24px));
+}
+
+.auth-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+
+.auth-card-primary {
+  background: linear-gradient(180deg, rgba(16, 32, 51, 0.98), rgba(23, 38, 58, 0.94));
+  color: #f6f1e6;
+}
+
+.auth-card-secondary {
+  background: rgba(255, 249, 238, 0.94);
+}
+
+.auth-card-primary .panel-label,
+.auth-card-primary .surface-copy,
+.auth-card-primary .signal-list {
+  color: rgba(246, 241, 230, 0.82);
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.auth-submit {
+  width: 100%;
+}
+
+.auth-error {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(215, 97, 62, 0.16);
+  border-radius: 16px;
+  background: rgba(215, 97, 62, 0.08);
+  color: var(--accent-dark);
+  font-weight: 700;
 }
 
 .exam-page {
@@ -730,6 +801,17 @@ a {
   .status-stack {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .topbar-actions,
+  .auth-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+    margin-left: 0;
   }
 }
 

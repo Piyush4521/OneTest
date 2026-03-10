@@ -1,5 +1,15 @@
 export type UserRole = "student" | "faculty" | "admin";
 
+export interface PortalUser {
+  uid: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  collegeId?: string;
+  department?: string;
+  active: boolean;
+}
+
 export type QuestionType = "single_choice" | "multi_choice" | "numeric" | "text";
 
 export interface ExamOption {
@@ -37,17 +47,20 @@ export interface PublishedExam {
   bundleHash: string;
   publishedAt: string;
   status: "draft" | "published";
+  createdBy?: string;
   questions: ExamQuestion[];
 }
 
 export interface Assignment {
   examId: string;
+  uid?: string;
   title: string;
   startAt: string;
   hardEndAt: string;
   graceSubmitAt: string;
   durationMinutes: number;
   maxWarnings: number;
+  bundleUrl?: string;
   bundleVersion: string;
   bundleHash: string;
   status: "assigned" | "active" | "submitted";

@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  build: {
+    // Excel import stays on a lazy-loaded route chunk and is excluded from precache.
+    chunkSizeWarningLimit: 1100
+  },
   plugins: [
     react(),
     VitePWA({

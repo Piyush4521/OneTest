@@ -5,35 +5,67 @@ import { MetricCard } from "@/components/MetricCard";
 import { StatusPill } from "@/components/StatusPill";
 import { formatExamWindow } from "@/lib/examModel";
 import { getExamBundle, saveExamBundle } from "@/lib/examVault";
-import type { Assignment, PublishedExam } from "@/types/exam";
+import type { Assignment, PortalUser, PublishedExam } from "@/types/exam";
 
 interface StudentDashboardPageProps {
-  assignment: Assignment;
-  exam: PublishedExam;
+  appMode: "demo" | "firebase";
+  assignment: Assignment | null;
+  currentUser: PortalUser | null;
+  exam: PublishedExam | null;
 }
 
 export function StudentDashboardPage({
+  appMode,
   assignment,
+  currentUser,
   exam
 }: StudentDashboardPageProps) {
   const [bundleCached, setBundleCached] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(
-    "Bundle not cached on this device yet."
-  );
+  const [statusMessage, setStatusMessage] = useState("Bundle not cached on this device yet.");
 
   useEffect(() => {
+    if (!exam) {
+      return;
+    }
+
     void getExamBundle(exam.id).then((cachedExam) => {
       if (cachedExam) {
         setBundleCached(true);
         setStatusMessage("Encrypted bundle cached for offline recovery.");
       }
     });
-  }, [exam.id]);
+  }, [exam]);
 
   async function handlePrefetch() {
+    if (!exam) {
+      return;
+    }
+
     await saveExamBundle(exam);
     setBundleCached(true);
     setStatusMessage("Encrypted bundle cached successfully.");
+  }
+
+  if (!assignment || !exam) {
+    return (
+      <div className="page-shell">
+        <section className="section-header">
+          <div>
+            <p className="panel-label">Student Desk</p>
+            <h1 className="section-title">No exam assignment is available yet.</h1>
+          </div>
+          <StatusPill tone="warning" label={appMode === "firebase" ? "Awaiting assignment" : "Demo seed missing"} />
+        </section>
+
+        <article className="surface-card">
+          <p className="surface-copy">
+            {appMode === "firebase"
+              ? `${currentUser?.name || "This account"} is signed in correctly, but no active assignment was found in Firestore under users/${currentUser?.uid || "uid"}/examAssignments.`
+              : "Demo mode could not load the seeded exam."}
+          </p>
+        </article>
+      </div>
+    );
   }
 
   return (
@@ -41,9 +73,7 @@ export function StudentDashboardPage({
       <section className="section-header">
         <div>
           <p className="panel-label">Student Desk</p>
-          <h1 className="section-title">
-            Everything important stays one thumb tap away.
-          </h1>
+          <h1 className="section-title">Everything important stays one thumb tap away.</h1>
         </div>
         <StatusPill
           tone={bundleCached ? "success" : "warning"}
@@ -86,10 +116,7 @@ export function StudentDashboardPage({
           </ul>
 
           <div className="actions-row">
-            <button
-              className="button button-secondary"
-              onClick={() => void handlePrefetch()}
-            >
+            <button className="button button-secondary" onClick={() => void handlePrefetch()}>
               {bundleCached ? "Refresh Cached Bundle" : "Prefetch Secure Bundle"}
             </button>
             <Link className="button button-primary" to={`/student/exam/${exam.id}`}>
@@ -104,8 +131,8 @@ export function StudentDashboardPage({
           <p className="panel-label">Session posture</p>
           <h2>Zero-distraction mode</h2>
           <p className="surface-copy">
-            The exam runner uses a fixed bottom action bar, a quick-jump palette,
-            sparse background checkpoints, and warning-driven auto-submit logic.
+            The exam runner uses a fixed bottom action bar, a quick-jump palette, sparse background
+            checkpoints, and warning-driven auto-submit logic.
           </p>
           <div className="stacked-pills">
             <StatusPill tone="neutral" label="Bottom navigation" />

@@ -136,6 +136,11 @@ service cloud.firestore {
       allow read, write: if isFaculty();
     }
 
+    match /examBundles/{examId} {
+      allow read: if isFaculty() || (isStudent() && assignmentExists(examId));
+      allow write: if isFaculty();
+    }
+
     match /submissions/{attemptId} {
       allow read: if isFaculty() || (isStudent() && resource.data.uid == request.auth.uid);
       allow create: if isStudent() && validSubmissionCreate();
