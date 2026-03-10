@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "allowedStudents": {
+      "$examId": {
+        "$uid": {
+          ".read": "auth != null && (auth.token.role === 'faculty' || auth.token.role === 'admin')",
+          ".write": "auth != null && (auth.token.role === 'faculty' || auth.token.role === 'admin')",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "monitoring": {
+      "$examId": {
+        "$uid": {
+          ".read": "auth != null && (auth.token.role === 'faculty' || auth.token.role === 'admin')",
+          ".write": "auth != null && auth.uid === $uid && auth.token.role === 'student' && root.child('allowedStudents/' + $examId + '/' + auth.uid).val() === true",
+          ".validate": "newData.hasChildren(['status', 'warningCount', 'updatedAt']) && newData.child('status').isString() && newData.child('warningCount').isNumber() && newData.child('warningCount').val() >= 0 && newData.child('updatedAt').isNumber()"
+        }
+      }
+    }
+  }
+}

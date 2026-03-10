@@ -1,0 +1,140 @@
+{
+  "users/{uid}": {
+    "uid": "string",
+    "email": "string",
+    "name": "string",
+    "role": "student | faculty | admin",
+    "collegeId": "string",
+    "department": "string",
+    "semester": "string",
+    "seatNumber": "string",
+    "active": true,
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+  },
+
+  "users/{uid}/examAssignments/{examId}": {
+    "examId": "string",
+    "uid": "string",
+    "title": "string",
+    "status": "assigned | active | submitted | absent",
+    "startAt": "timestamp",
+    "hardEndAt": "timestamp",
+    "graceSubmitAt": "timestamp",
+    "durationMinutes": 60,
+    "maxWarnings": 3,
+    "bundleUrl": "string",
+    "bundleVersion": "string",
+    "bundleSha256": "string",
+    "releaseKeyRef": "examReleaseKeys/{examId}",
+    "room": "LAB-A",
+    "seatNumber": "A-17",
+    "deviceBinding": {
+      "required": false,
+      "deviceId": "string | null"
+    },
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+  },
+
+  "examDrafts/{examId}": {
+    "examId": "string",
+    "title": "string",
+    "subject": "string",
+    "courseCode": "string",
+    "durationMinutes": 60,
+    "questionCount": 50,
+    "negativeMarking": false,
+    "instructionsHtml": "string",
+    "published": true,
+    "bundleVersion": "2026-03-10T09:00:00Z",
+    "createdBy": "uid",
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+  },
+
+  "examDrafts/{examId}/questions/{questionId}": {
+    "questionId": "string",
+    "section": "General Aptitude",
+    "type": "single_choice | multi_choice | numeric | text",
+    "promptHtml": "string",
+    "options": [
+      {
+        "id": "A",
+        "labelHtml": "string"
+      }
+    ],
+    "answerKey": ["A"],
+    "marks": 1,
+    "negativeMarks": 0,
+    "explanationHtml": "string",
+    "assetUrls": ["string"],
+    "order": 1,
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+  },
+
+  "examReleaseKeys/{examId}": {
+    "examId": "string",
+    "keyVersion": "string",
+    "released": true,
+    "releasedAt": "timestamp",
+    "encryptedExamKey": "base64",
+    "bundleVersion": "string"
+  },
+
+  "answerKeys/{examId}": {
+    "examId": "string",
+    "bundleVersion": "string",
+    "questionAnswers": {
+      "q1": ["A"],
+      "q2": ["C"]
+    },
+    "gradingPolicy": {
+      "negativeMarking": false,
+      "partialCredit": false
+    },
+    "createdBy": "uid",
+    "createdAt": "timestamp"
+  },
+
+  "submissions/{examId}_{uid}": {
+    "attemptId": "examId_uid",
+    "examId": "string",
+    "uid": "string",
+    "status": "in_progress | submitted | auto_submitted | graded",
+    "startedAt": "timestamp",
+    "lastSavedAt": "timestamp",
+    "finalizedAt": "timestamp | null",
+    "bundleVersion": "string",
+    "warningCount": 0,
+    "lastWarningCode": "string | null",
+    "answers": {
+      "q1": {
+        "value": ["A"],
+        "markedForReview": false,
+        "updatedAt": "timestamp"
+      }
+    },
+    "client": {
+      "userAgent": "string",
+      "platform": "string",
+      "appVersion": "string"
+    },
+    "network": {
+      "offlineRecoveries": 0,
+      "lastOnlineAt": "timestamp | null"
+    },
+    "proctoring": {
+      "tabSwitches": 0,
+      "fullscreenExits": 0,
+      "shortcutAttempts": 0
+    },
+    "score": {
+      "objective": 0,
+      "manual": 0,
+      "total": 0,
+      "published": false
+    }
+  }
+}

@@ -1,0 +1,146 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isFaculty() {
+      return signedIn()
+        && (request.auth.token.role == 'faculty' || request.auth.token.role == 'admin');
+    }
+
+    function isStudent() {
+      return signedIn() && request.auth.token.role == 'student';
+    }
+
+    function assignmentExists(examId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/examAssignments/$(examId));
+    }
+
+    function assignment(examId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)/examAssignments/$(examId));
+    }
+
+    function examWindowOpen(examId) {
+      return assignmentExists(examId)
+        && request.time >= assignment(examId).data.startAt
+        && request.time <= assignment(examId).data.graceSubmitAt;
+    }
+
+    function releaseWindowOpen(examId) {
+      return assignmentExists(examId)
+        && request.time >= assignment(examId).data.startAt
+        && request.time <= assignment(examId).data.hardEndAt;
+    }
+
+    function submissionDocIdMatches() {
+      return request.resource.data.attemptId == request.resource.data.examId + "_" + request.auth.uid;
+    }
+
+    function validSubmissionShape() {
+      return request.resource.data.keys().hasOnly([
+        "attemptId",
+        "examId",
+        "uid",
+        "status",
+        "startedAt",
+        "lastSavedAt",
+        "finalizedAt",
+        "bundleVersion",
+        "warningCount",
+        "lastWarningCode",
+        "answers",
+        "client",
+        "network",
+        "proctoring",
+        "score"
+      ])
+      && request.resource.data.uid == request.auth.uid
+      && request.resource.data.examId is string
+      && request.resource.data.answers is map
+      && request.resource.data.bundleVersion is string
+      && request.resource.data.warningCount is int
+      && request.resource.data.warningCount >= 0;
+    }
+
+    function validSubmissionCreate() {
+      return validSubmissionShape()
+        && submissionDocIdMatches()
+        && assignmentExists(request.resource.data.examId)
+        && examWindowOpen(request.resource.data.examId)
+        && request.resource.data.status == "in_progress"
+        && request.resource.data.finalizedAt == null
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.lastSavedAt == request.time
+        && request.resource.data.score.objective == 0
+        && request.resource.data.score.manual == 0
+        && request.resource.data.score.total == 0
+        && request.resource.data.score.published == false;
+    }
+
+    function validStudentSubmissionUpdate() {
+      return validSubmissionShape()
+        && resource.data.uid == request.auth.uid
+        && resource.data.finalizedAt == null
+        && request.resource.data.attemptId == resource.data.attemptId
+        && request.resource.data.examId == resource.data.examId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.bundleVersion == resource.data.bundleVersion
+        && request.resource.data.startedAt == resource.data.startedAt
+        && request.resource.data.warningCount >= resource.data.warningCount
+        && request.resource.data.warningCount <= resource.data.warningCount + 1
+        && request.resource.data.score == resource.data.score
+        && examWindowOpen(resource.data.examId)
+        && (
+          (
+            request.resource.data.status == "in_progress"
+            && request.resource.data.finalizedAt == null
+            && request.resource.data.lastSavedAt == request.time
+          )
+          ||
+          (
+            request.resource.data.status in ["submitted", "auto_submitted"]
+            && request.resource.data.finalizedAt == request.time
+            && request.resource.data.lastSavedAt == request.time
+          )
+        );
+    }
+
+    match /users/{uid} {
+      allow read: if isFaculty() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if isFaculty();
+    }
+
+    match /users/{uid}/examAssignments/{examId} {
+      allow read: if isFaculty() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if isFaculty();
+    }
+
+    match /examDrafts/{examId} {
+      allow read, write: if isFaculty();
+    }
+
+    match /examDrafts/{examId}/questions/{questionId} {
+      allow read, write: if isFaculty();
+    }
+
+    match /examReleaseKeys/{examId} {
+      allow read: if isFaculty() || (isStudent() && releaseWindowOpen(examId));
+      allow write: if isFaculty();
+    }
+
+    match /answerKeys/{examId} {
+      allow read, write: if isFaculty();
+    }
+
+    match /submissions/{attemptId} {
+      allow read: if isFaculty() || (isStudent() && resource.data.uid == request.auth.uid);
+      allow create: if isStudent() && validSubmissionCreate();
+      allow update: if isFaculty() || (isStudent() && validStudentSubmissionUpdate());
+      allow delete: if false;
+    }
+  }
+}
